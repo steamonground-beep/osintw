@@ -10,7 +10,7 @@ process.
 - **Breach search** — query indexed breach records.
 - **Stealer log search** — query infostealer output, including the `url:user:pass` lines.
 - **Victim search** — enumerate victim profiles and their infected hosts.
-- **Enrichment** — 12 single-subject lookups: Discord profile and username history,
+- **Enrichment** — 11 single-subject lookups: Discord profile and username history,
   Steam, Xbox, Minecraft history, IP geolocation, Google account info, email
   existence (holehe), Roblox, subdomains, and phonebook domain intelligence.
 - **Filtering** — repeatable field filters, wildcard match, cursor paging.
