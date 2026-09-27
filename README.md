@@ -55,7 +55,7 @@ copy .env.example .env      # Windows; use `cp` on macOS/Linux
 in the shell before starting. Then:
 
 ```bash
-python api/[[...path]].py
+python app.py
 ```
 
 Open http://127.0.0.1:5000 and sign in with `SITE_PASSWORD`.
@@ -94,19 +94,23 @@ almost certainly a missing or short secret.
 ### Layout
 
 ```
-api/[[...path]].py     Vercel serverless entry; exports `app`
-webapp/__init__.py     app factory, error handling, security headers, static files
-webapp/config.py       environment parsing and production refusal
-webapp/auth.py         signed sessions, CSRF, rate limiting
-webapp/oathnet_client.py  server-side OathNet HTTP client with retries
-webapp/redact.py       secret masking, applied before serialisation
-webapp/routes.py       API surface and the filter whitelist
-public/                static front end, no build step
-tests.py               test suite
+app.py                     Vercel entrypoint; exports the Flask instance as `app`
+webapp/__init__.py         app factory, error handling, security headers, static files
+webapp/config.py           environment parsing and production refusal
+webapp/auth.py             signed sessions, CSRF, rate limiting
+webapp/oathnet_client.py   server-side OathNet HTTP client with retries
+webapp/redact.py           secret masking, applied before serialisation
+webapp/routes.py           API surface and the filter whitelist
+public/                    static front end, no build step
+tests.py                   test suite
 ```
 
-`public/` is the Vercel output directory and is served straight from the CDN;
-only `/api/*` invokes the function.
+Vercel auto-detects the Flask instance in the root `app.py`, so there is no
+`pyproject.toml` and no `[tool.vercel] entrypoint` to keep in sync. The whole
+app is a single function; `webapp/routes.py` owns the `/api/*` routing and
+`public/` is served from the CDN. Note that Vercel serves `public/**` itself,
+so `app.static_folder` is left unset and the static routes in
+`webapp/__init__.py` exist for `vercel dev` and local runs.
 
 ## Legal
 
