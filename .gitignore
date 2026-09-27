@@ -1,0 +1,29 @@
+# Secrets. OATHNET_API_KEY, SITE_PASSWORD, and SECRET_KEY live here and must
+# never be committed. .env.example is the tracked template.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Vercel
+.vercel/
+
+# Exported result sets from the console
+*.csv
+results-*.json
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,17 @@
+# Normalise line endings in the repository. Local checkouts on Windows still
+# get CRLF, but the committed blobs and the Vercel build are LF-only, so diffs
+# stay clean and shell scripts are not broken by stray carriage returns.
+* text=auto eol=lf
+
+*.py text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>OathNet Research Console</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<!-- ── Sign-in ─────────────────────────────────────────────────────── -->
+<main id="login-view" class="login-wrap" hidden>
+  <form id="login-form" class="card login-card" autocomplete="off">
+    <h1>OathNet Research Console</h1>
+    <p class="muted">Authorised operators only. All queries are logged server-side.</p>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required
+           autocomplete="current-password" autofocus>
+    <button type="submit" class="primary">Sign in</button>
+    <p id="login-error" class="error" role="alert" hidden></p>
+  </form>
+</main>
+
+<!-- ── Console ─────────────────────────────────────────────────────── -->
+<div id="app-view" hidden>
+
+  <header class="topbar">
+    <div class="brand">
+      <strong>OathNet</strong><span class="muted"> Research Console</span>
+    </div>
+    <div class="topbar-right">
+      <span id="quota-pill" class="pill" title="Remaining OathNet daily lookups">quota —</span>
+      <button id="reveal-toggle" class="ghost" type="button" aria-pressed="false"
+              hidden>Reveal secrets</button>
+      <button id="logout" class="ghost" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main class="shell">
+
+    <form id="search-form" class="card search-card" autocomplete="off">
+      <div class="search-row">
+        <div class="field grow">
+          <label for="query">Query</label>
+          <input id="query" name="query" type="text" required
+                 placeholder="email, domain, IP, Discord ID, username…"
+                 spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="dataset">Dataset</label>
+          <select id="dataset" name="dataset">
+            <option value="breach">Breach records</option>
+            <option value="stealer">Stealer logs</option>
+            <option value="victims">Victim profiles</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="page-size">Per page</label>
+          <select id="page-size" name="page_size">
+            <option>25</option><option>50</option><option>100</option>
+          </select>
+        </div>
+        <button type="submit" class="primary search-btn">Search</button>
+      </div>
+
+      <p id="detect-hint" class="muted small" hidden></p>
+
+      <details class="filters">
+        <summary>Filters</summary>
+        <div id="filter-rows" class="filter-rows"></div>
+        <div class="filter-actions">
+          <button id="add-filter" type="button" class="ghost small">Add filter</button>
+          <label class="check">
+            <input id="wildcard" type="checkbox"> wildcard match
+          </label>
+        </div>
+        <p class="muted small">
+          Filters narrow the search. Values are combined with OR inside a field,
+          AND across fields.
+        </p>
+      </details>
+    </form>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-panel="results" aria-selected="true">Results</button>
+      <button class="tab" role="tab" data-panel="enrich" aria-selected="false">Enrichment</button>
+    </nav>
+
+    <!-- Results -->
+    <section id="panel-results" class="panel" role="tabpanel">
+      <div id="status" class="status" hidden></div>
+      <div id="results-actions" class="row-actions" hidden>
+        <span id="result-count" class="muted small"></span>
+        <div class="spacer"></div>
+        <button id="export-json" class="ghost small" type="button">Download JSON</button>
+        <button id="export-csv" class="ghost small" type="button">Download CSV</button>
+      </div>
+      <div id="table-wrap" class="table-wrap">
+        <p class="muted">Run a search to see records.</p>
+      </div>
+      <div id="pager" class="pager" hidden>
+        <button id="page-prev" class="ghost" type="button">Previous</button>
+        <span id="page-info" class="muted small"></span>
+        <button id="page-next" class="ghost" type="button">Next</button>
+      </div>
+    </section>
+
+    <!-- Enrichment -->
+    <section id="panel-enrich" class="panel" role="tabpanel" hidden>
+      <div class="card">
+        <div class="search-row">
+          <div class="field grow">
+            <label for="lookup-name">Lookup</label>
+            <select id="lookup-name"></select>
+          </div>
+          <div class="field grow">
+            <label for="lookup-value">Value</label>
+            <input id="lookup-value" type="text" spellcheck="false"
+                   placeholder="Discord ID, Steam64, IP, email, domain…">
+          </div>
+          <label class="check inline">
+            <input id="lookup-alive" type="checkbox"> live check
+          </label>
+          <button id="lookup-run" type="button" class="primary">Run</button>
+        </div>
+        <p id="lookup-hint" class="muted small"></p>
+      </div>
+      <div id="lookup-output" class="card output">
+        <p class="muted">Pick a lookup and run it.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
