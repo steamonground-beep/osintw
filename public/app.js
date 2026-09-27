@@ -65,6 +65,21 @@ function showLogin() {
   $('password').focus();
 }
 
+function showLoginError(message) {
+  const el = $('login-error');
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+}
+
+/* Null-safe so a cached HTML file that predates an element cannot crash the
+ * boot sequence. Version skew between index.html and app.js is a browser cache
+ * reality, not a hypothetical. */
+function setHidden(id, hidden) {
+  const el = $(id);
+  if (el) el.hidden = hidden;
+}
+
 function showApp() {
   $('login-view').hidden = true;
   $('app-view').hidden = false;
@@ -112,26 +127,36 @@ async function refreshQuota() {
 /* ── auth ─────────────────────────────────────────────────────────── */
 
 async function boot() {
+  let session;
   try {
-    const session = await api('/api/session');
-    if (session.authenticated) {
-      state.csrf = session.csrf;
-      state.allowReveal = Boolean(session.allow_reveal);
-      $('reveal-toggle').hidden = !state.allowReveal;
-      if (session.public) {
-        $('public-banner').hidden = false;
-        // There is no session to end.
-        $('logout').hidden = true;
-      }
-      showApp();
-      await loadLookups();
-      refreshQuota();
-    } else {
-      showLogin();
+    session = await api('/api/session');
+  } catch (err) {
+    // api() routes a 401 to the login form itself. Anything else is a genuine
+    // failure, so say so: falling through to a bare login form makes a broken
+    // script look like a password problem.
+    if (err.status !== 401) {
+      showLoginError(err.message || 'Could not reach the server. Try reloading.');
     }
-  } catch {
     showLogin();
+    return;
   }
+
+  if (!session.authenticated) {
+    showLogin();
+    return;
+  }
+
+  state.csrf = session.csrf;
+  state.allowReveal = Boolean(session.allow_reveal);
+  setHidden('reveal-toggle', !state.allowReveal);
+  if (session.public) {
+    setHidden('public-banner', false);
+    // There is no session to end.
+    setHidden('logout', true);
+  }
+  showApp();
+  await loadLookups();
+  refreshQuota();
 }
 
 $('login-form').addEventListener('submit', async (event) => {
