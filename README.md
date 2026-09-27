@@ -44,6 +44,21 @@ Two honest limitations:
    is the point, but it means the machine is now holding stolen credentials in
    the DOM.
 
+### Running with no password
+
+Set `PUBLIC_MODE=1` and the login screen disappears: every visitor is treated as
+an operator. `SITE_PASSWORD` becomes optional, no session cookie is issued, and
+CSRF is skipped because there is no per-visitor state left to forge.
+
+What does **not** change: secret masking, the filter whitelist, input limits, and
+the search rate limit. The rate limit matters most here — with no password, the
+URL is the only barrier, so 120 requests/minute per address is now the only
+thing between a scraper and your daily quota.
+
+`PUBLIC_MODE` is an explicit opt-in rather than an inference from an empty
+`SITE_PASSWORD`, so that forgetting to set a password can never silently publish
+the site. The UI shows a banner while it is on.
+
 ## Run locally
 
 ```bash
@@ -66,8 +81,10 @@ Open http://127.0.0.1:5000 and sign in with `SITE_PASSWORD`.
 python tests.py
 ```
 
-69 tests, no network, no API key, no quota. `StubOathNet` replays real upstream
-response envelopes so the tests assert what the browser receives.
+90 tests, no network, no API key, no quota. `StubOathNet` replays real upstream
+response envelopes so the tests assert what the browser receives, and
+`TestRealClientAgainstMockServer` drives the actual HTTP client against a local
+server.
 
 ## Deploy to Vercel
 
@@ -83,8 +100,9 @@ Add these as environment variables for **both** preview and production
 | Variable | Required | Notes |
 | --- | --- | --- |
 | `OATHNET_API_KEY` | yes | Your OathNet key. |
-| `SITE_PASSWORD` | yes | Console password, 12+ characters. |
 | `SECRET_KEY` | yes | 32+ characters. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. |
+| `SITE_PASSWORD` | unless `PUBLIC_MODE=1` | Console password, 12+ characters. |
+| `PUBLIC_MODE` | no | `1` to run with no password at all. |
 | `ALLOW_REVEAL` | no | `1` to permit plaintext secrets. Default off. |
 
 Vercel sets `VERCEL=1` automatically, which is what activates the production

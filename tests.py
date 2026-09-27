@@ -800,5 +800,127 @@ class TestRealClientAgainstMockServer(WebTestCase):
         self.assertEqual(response.get_json()["error"], "network")
 
 
+class TestPublicMode(WebTestCase):
+    """PUBLIC_MODE=1 means no password: every visitor is an operator."""
+
+    def make_app(self, **overrides) -> None:
+        settings = Settings(
+            oathnet_api_key="test-key-not-real",
+            oathnet_base_url="https://example.invalid/api",
+            site_password=overrides.pop("site_password", ""),
+            secret_key="0" * 40,
+            is_production=False,
+            allow_reveal=False,
+            public_mode=True,
+            **overrides,
+        )
+        self.app = create_app(settings)
+        self.stub = StubOathNet()
+        self.app.config["OATHNET_CLIENT"] = self.stub
+        self.client = self.app.test_client()
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.make_app()
+
+    def test_session_reports_authenticated_without_a_password(self):
+        body = self.client.get("/api/session").get_json()
+        self.assertTrue(body["authenticated"])
+        self.assertTrue(body["public"])
+        self.assertIsNone(body["csrf"])
+
+    def test_data_routes_reach_the_upstream_with_no_login(self):
+        self.stub.responses["/service/v2/breach/search"] = BREACH_PAGE
+        response = self.client.post("/api/breach", json={"query": "victim@example.com"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.stub.last()["q"], "victim@example.com")
+
+    def test_no_csrf_header_required(self):
+        response = self.client.post("/api/breach", json={"query": "x"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_no_session_cookie_is_issued(self):
+        self.client.post("/api/breach", json={"query": "x"})
+        self.assertNotIn("Set-Cookie", self.client.post(
+            "/api/breach", json={"query": "x"}
+        ).headers)
+
+    def test_secrets_are_still_masked(self):
+        self.stub.responses["/service/v2/breach/search"] = BREACH_PAGE
+        body = self.client.post("/api/breach", json={"query": "x"}).get_data(as_text=True)
+        self.assertNotIn("hunter2", body)
+        self.assertIn("victim@example.com", body)
+
+    def test_reveal_still_requires_opt_in(self):
+        self.app.config["ALLOW_REVEAL"] = False
+        self.stub.responses["/service/v2/breach/search"] = BREACH_PAGE
+        body = self.client.post(
+            "/api/breach", json={"query": "x"}, headers={"X-Reveal": "confirm"}
+        ).get_json()
+        self.assertFalse(body["revealed"])
+        self.assertNotEqual(body["rows"][0]["password"], "hunter2")
+
+    def test_reveal_works_in_public_mode_when_enabled(self):
+        self.app.config["ALLOW_REVEAL"] = True
+        self.stub.responses["/service/v2/breach/search"] = BREACH_PAGE
+        body = self.client.post(
+            "/api/breach", json={"query": "x"}, headers={"X-Reveal": "confirm"}
+        ).get_json()
+        self.assertTrue(body["revealed"])
+        self.assertEqual(body["rows"][0]["password"], "hunter2")
+
+    def test_rate_limit_still_applies(self):
+        from webapp import config
+
+        for _ in range(config.SEARCH_MAX_REQUESTS + 1):
+            response = self.client.post("/api/breach", json={"query": "x"})
+        self.assertEqual(response.status_code, 429)
+
+    def test_input_validation_still_applies(self):
+        self.assertEqual(self.client.post("/api/breach", json={"query": "  "}).status_code, 400)
+
+    def test_login_is_unnecessary_but_not_harmful(self):
+        self.assertEqual(self.client.post("/api/login", json={}).status_code, 200)
+
+    def test_production_allows_public_without_a_password(self):
+        from webapp.config import ConfigError, load_settings
+
+        saved = {n: os.environ.get(n) for n in
+                 ("VERCEL", "PUBLIC_MODE", "OATHNET_API_KEY", "SECRET_KEY", "SITE_PASSWORD")}
+        for name in saved:
+            os.environ.pop(name, None)
+        os.environ.update(VERCEL="1", PUBLIC_MODE="1", OATHNET_API_KEY="k", SECRET_KEY="0" * 40)
+        try:
+            settings = load_settings()
+            self.assertTrue(settings.public_mode)
+            self.assertEqual(settings.site_password, "")
+        finally:
+            for name, value in saved.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def test_production_still_refuses_public_without_a_password(self):
+        """The footgun guard: no PUBLIC_MODE and no SITE_PASSWORD must fail."""
+        from webapp.config import ConfigError, load_settings
+
+        saved = {n: os.environ.get(n) for n in
+                 ("VERCEL", "PUBLIC_MODE", "OATHNET_API_KEY", "SECRET_KEY", "SITE_PASSWORD")}
+        for name in saved:
+            os.environ.pop(name, None)
+        os.environ.update(VERCEL="1", OATHNET_API_KEY="k", SECRET_KEY="0" * 40)
+        try:
+            with self.assertRaises(ConfigError) as caught:
+                load_settings()
+            self.assertIn("SITE_PASSWORD", str(caught.exception))
+        finally:
+            for name, value in saved.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -89,7 +89,8 @@ def set_session(response):
 def check_password(candidate: str) -> bool:
     expected = current_app.config["SITE_PASSWORD"]
     if not expected:
-        return False
+        # Public mode: there is no password to match.
+        return bool(current_app.config.get("PUBLIC_MODE"))
     # Constant-time, and always compares full length so a wrong-length input
     # does not fail faster than a right-length one.
     return hmac.compare_digest(
@@ -181,6 +182,20 @@ def require_auth(fn):
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
+        g.search_id = request.headers.get("X-Search-Id") or None
+
+        if current_app.config.get("PUBLIC_MODE"):
+            # No password, so no session and no CSRF token: there is no
+            # per-visitor state for a cross-site request to forge. The search
+            # rate limit still applies, since that is what protects the quota.
+            g.session = {"sub": "public", "csrf": "", "exp": 0}
+            g.public = True
+            try:
+                enforce(SEARCH_MAX_REQUESTS, SEARCH_WINDOW_SECONDS, "search")
+            except RateLimited as limited:
+                return limited.response
+            return fn(*args, **kwargs)
+
         session = read_session()
         if session is None:
             return jsonify({"error": "unauthorized", "message": "Sign in to continue."}), 401
@@ -197,7 +212,6 @@ def require_auth(fn):
                 )
 
         g.session = session
-        g.search_id = request.headers.get("X-Search-Id") or None
         try:
             enforce(SEARCH_MAX_REQUESTS, SEARCH_WINDOW_SECONDS, "search")
         except RateLimited as limited:

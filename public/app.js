@@ -118,6 +118,11 @@ async function boot() {
       state.csrf = session.csrf;
       state.allowReveal = Boolean(session.allow_reveal);
       $('reveal-toggle').hidden = !state.allowReveal;
+      if (session.public) {
+        $('public-banner').hidden = false;
+        // There is no session to end.
+        $('logout').hidden = true;
+      }
       showApp();
       await loadLookups();
       refreshQuota();

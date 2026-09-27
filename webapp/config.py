@@ -49,6 +49,10 @@ class Settings:
     allow_reveal: bool
     allow_registration: bool = False
     session_max_age: int = 8 * 3600
+    # When true, no password is required: every visitor is an operator. Opt-in
+    # via PUBLIC_MODE=1 so that forgetting SITE_PASSWORD cannot silently open
+    # the site to the internet.
+    public_mode: bool = False
 
     @property
     def secure_cookies(self) -> bool:
@@ -62,24 +66,21 @@ def load_settings() -> Settings:
     api_key = os.environ.get("OATHNET_API_KEY", "").strip()
     password = os.environ.get("SITE_PASSWORD", "").strip()
     secret = os.environ.get("SECRET_KEY", "").strip()
+    public_mode = _flag("PUBLIC_MODE", False)
 
     if is_production:
-        missing = [
-            name
-            for name, value in (
-                ("OATHNET_API_KEY", api_key),
-                ("SITE_PASSWORD", password),
-                ("SECRET_KEY", secret),
-            )
-            if not value
-        ]
+        # A password is only mandatory when the site is not explicitly public.
+        required = [("OATHNET_API_KEY", api_key), ("SECRET_KEY", secret)]
+        if not public_mode:
+            required.append(("SITE_PASSWORD", password))
+        missing = [name for name, value in required if not value]
         if missing:
             raise ConfigError(
                 "Refusing to start in production without: " + ", ".join(missing) + "\n"
-                "Set these as Vercel environment variables. An instance without "
-                "SITE_PASSWORD would serve breach data to anonymous visitors."
+                "Set these as Vercel environment variables. To run without a "
+                "password, set PUBLIC_MODE=1 and SITE_PASSWORD is not required."
             )
-        if len(password) < 12:
+        if not public_mode and len(password) < 12:
             raise ConfigError("SITE_PASSWORD must be at least 12 characters.")
         if len(secret) < 32:
             raise ConfigError("SECRET_KEY must be at least 32 characters.")
@@ -97,4 +98,5 @@ def load_settings() -> Settings:
         # Revealing plaintext credentials is opt-in even for authenticated users.
         allow_reveal=_flag("ALLOW_REVEAL", False),
         allow_registration=_flag("ALLOW_REGISTRATION", False),
+        public_mode=public_mode,
     )

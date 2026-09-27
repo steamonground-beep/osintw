@@ -134,6 +134,14 @@ button[aria-pressed=true] { background: var(--warn); border-color: var(--warn); 
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel);
 }
 .empty-note { padding: 1rem; }
+
+.banner {
+  padding: .6rem 1.2rem;
+  background: #3a2a00;
+  border-bottom: 1px solid var(--warn);
+  color: #ffd479;
+  font-size: 13px;
+}
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td {
   text-align: left; padding: .5rem .7rem;

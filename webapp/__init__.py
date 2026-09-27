@@ -53,6 +53,7 @@ def create_app(settings=None) -> Flask:
         SESSION_COOKIE_SAMESITE="Strict",
         ALLOW_REVEAL=settings.allow_reveal,
         ALLOW_REGISTRATION=settings.allow_registration,
+        PUBLIC_MODE=settings.public_mode,
         # Vercel terminates TLS and sets these; trust them for client IPs only.
         TRUST_PROXY=bool(settings.is_production),
         LIMITER=SlidingWindowLimiter(),
@@ -64,6 +65,12 @@ def create_app(settings=None) -> Flask:
     from .routes import api
 
     app.register_blueprint(api)
+
+    if settings.public_mode:
+        app.logger.warning(
+            "PUBLIC_MODE is on: this site requires no password and every "
+            "visitor can run searches against the configured OathNet key."
+        )
 
     @app.after_request
     def _security_headers(response):

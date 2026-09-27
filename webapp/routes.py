@@ -163,13 +163,23 @@ def _envelope(data: Any, reveal: bool, **extra) -> dict:
 
 @api.get("/session")
 def session_state():
+    if current_app.config.get("PUBLIC_MODE"):
+        return jsonify(
+            {
+                "authenticated": True,
+                "csrf": None,
+                "public": True,
+                "allow_reveal": current_app.config["ALLOW_REVEAL"],
+            }
+        )
     session = read_session()
     if session is None:
-        return jsonify({"authenticated": False, "csrf": None})
+        return jsonify({"authenticated": False, "csrf": None, "public": False})
     return jsonify(
         {
             "authenticated": True,
             "csrf": session.get("csrf"),
+            "public": False,
             "allow_reveal": current_app.config["ALLOW_REVEAL"],
         }
     )
